@@ -132,6 +132,102 @@ function displayResults(data) {
     
     const weightedTable = createGPATable(data.weighted_gpas, orderedPeriods);
     document.getElementById('weighted-table').innerHTML = weightedTable;
+
+    // Add graph
+    const ctx = document.getElementById('weighted-chart').getContext('2d');
+    const weightedGPAs = orderedPeriods
+        .filter(period => data.weighted_gpas[period] !== undefined)
+        .map(period => ({
+            x: period,
+            y: data.weighted_gpas[period]
+        }));
+
+    // Calculate maximum possible GPA based on actual class composition
+    const maxPossibleGPA = Object.keys(data.grades).reduce((sum, className) => {
+        if (className.includes("AP") && !className.includes("APA")) {
+            return sum + 8.0;  // AP class
+        } else if (className.includes("APA")) {
+            return sum + 7.0;  // APA class
+        }
+        return sum + 6.0;  // Regular class
+    }, 0) / Object.keys(data.grades).length;  // Divide by total number of classes
+
+    // Calculate y-axis bounds based on current GPA and maximum possible GPA
+    const yMin = Math.floor(currentWeightedGPA - 0.5); // Round down to nearest whole number
+    const maxValue = Math.max(...weightedGPAs.map(gpa => gpa.y), maxPossibleGPA);
+    const yMax = Math.ceil(maxValue * 10) / 10; // Round up to nearest 0.1
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Weighted GPA',
+                    data: weightedGPAs,
+                    borderColor: 'rgb(147, 51, 234)',
+                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Maximum Possible GPA',
+                    data: orderedPeriods.map(period => ({
+                        x: period,
+                        y: maxPossibleGPA
+                    })),
+                    borderColor: 'rgb(239, 68, 68)', // Red color
+                    borderDash: [5, 5], // Dotted line
+                    borderWidth: 2,
+                    pointRadius: 0, // Hide points
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (context.dataset.label === 'Maximum Possible GPA') {
+                                return `Maximum Possible: ${maxPossibleGPA.toFixed(2)}`;
+                            }
+                            return `GPA: ${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                },
+                legend: {
+                    display: true,
+                    labels: {
+                        filter: function(legendItem) {
+                            return legendItem.text !== 'Maximum Possible GPA';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: yMin,
+                    max: yMax,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2);
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
 }
 
 function createGradesTable(grades, orderedPeriods) {

@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
 import time
 
 class SkywardGPA:
@@ -19,7 +20,11 @@ class SkywardGPA:
 
     def calculate(self):
         try:
-            self.driver = webdriver.Chrome()
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            self.driver = webdriver.Chrome(options=chrome_options)
             self.login()
             self.navigate_to_gradebook()
             self.extract_grades()

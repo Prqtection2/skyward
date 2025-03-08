@@ -8,6 +8,11 @@ from selenium.webdriver.chrome.service import Service
 import time
 import os
 import subprocess
+import traceback
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class SkywardGPA:
     def __init__(self, username, password):
@@ -30,15 +35,20 @@ class SkywardGPA:
 
     def calculate(self):
         try:
+            logger.info("Setting up Chrome options...")
             options = webdriver.ChromeOptions()
-            options.add_argument('--headless=new')  # new headless mode
+            options.add_argument('--headless=new')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
-            options.add_argument('--remote-debugging-port=9222')
+            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--start-maximized')
+            options.add_argument('--ignore-certificate-errors')
+            options.add_experimental_option('excludeSwitches', ['enable-logging'])
             
-            # Let Selenium 4.15+ handle driver management
+            logger.info("Initializing Chrome driver...")
             self.driver = webdriver.Chrome(options=options)
+            logger.info("Chrome driver initialized successfully")
             
             self.login()
             self.navigate_to_gradebook()
@@ -52,20 +62,28 @@ class SkywardGPA:
                 'weighted_gpas': self.weighted_period_gpas,
                 'ordered_periods': self.ordered_periods
             }
+        except Exception as e:
+            logger.error(f"Error in calculate: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         finally:
             if self.driver:
-                self.driver.quit()
+                try:
+                    self.driver.quit()
+                except Exception as e:
+                    logger.error(f"Error closing driver: {str(e)}")
 
     def login(self):
         try:
-            # Access the login page
+            logger.info("Attempting to access login page...")
             self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
-
-            # Wait for and enter username
+            
+            logger.info("Waiting for username input...")
             username_input = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
             )
             username_input.send_keys(self.username)
+            logger.info("Username entered successfully")
 
             # Enter password
             password_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[2]/td[2]/input')

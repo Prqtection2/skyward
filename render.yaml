@@ -6,7 +6,7 @@ services:
       curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
       echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list
       apt-get -y update
-      apt-get -y install google-chrome-stable
+      apt-get -y install google-chrome-stable=114.0.5735.90-1
       pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:

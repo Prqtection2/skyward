@@ -30,13 +30,15 @@ class SkywardGPA:
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
-            chrome_options.binary_location = "/usr/bin/google-chrome-stable"
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--remote-debugging-port=9222')
+            chrome_options.binary_location = "/usr/bin/google-chrome"
             
             # Configure webdriver-manager
             os.environ['WDM_LOCAL'] = '1'  # Force local cache
             os.environ['WDM_PROGRESS_BAR'] = '0'  # Disable progress bar
             
-            service = Service(ChromeDriverManager(driver_version="114.0.5735.90").install())
+            service = Service(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             
             self.login()

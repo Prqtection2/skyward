@@ -4,7 +4,10 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
+import platform
 import time
 import os
 import subprocess
@@ -28,8 +31,8 @@ class SkywardGPA:
                             '3U1', '3U2', 'NW3', '4U1', '4U2', 'NW4', 'EX2', 'SM2', 'YR']
         self.ordered_periods = []
         
-        # Start Xvfb
-        if not os.environ.get('DISPLAY'):
+        # Only start Xvfb on Linux (Render)
+        if platform.system() == 'Linux' and not os.environ.get('DISPLAY'):
             subprocess.Popen(['Xvfb', ':99', '-screen', '0', '1024x768x24'])
             os.environ['DISPLAY'] = ':99'
 
@@ -37,9 +40,16 @@ class SkywardGPA:
         try:
             logger.info("Setting up Chrome options...")
             options = webdriver.ChromeOptions()
-            options.add_argument('--headless=new')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
+            
+            # Set up options based on environment
+            if platform.system() == 'Linux':  # Render
+                options.add_argument('--headless=new')
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+            else:  # Local
+                options.add_argument('--headless=new')  # Still use headless for testing
+            
+            # Common options
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
             options.add_argument('--start-maximized')
@@ -47,7 +57,9 @@ class SkywardGPA:
             options.add_experimental_option('excludeSwitches', ['enable-logging'])
             
             logger.info("Initializing Chrome driver...")
-            self.driver = webdriver.Chrome(options=options)
+            # Always use ChromeDriverManager for consistent behavior
+            service = ChromeService(ChromeDriverManager().install())
+            self.driver = webdriver.Chrome(service=service, options=options)
             logger.info("Chrome driver initialized successfully")
             
             self.login()
@@ -132,31 +144,40 @@ class SkywardGPA:
             logger.info("Looking for gradebook button...")
             # Try different ways to find the gradebook button
             try:
-                # First try the original xpath
+                # First try waiting for element to be clickable
                 gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
-                logger.info("Trying original xpath...")
+                logger.info("Waiting for gradebook button to be clickable...")
                 gradebook_button = WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.XPATH, gradebook_xpath))
+                    EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
                 )
+                
+                # Try to scroll the button into view
+                logger.info("Scrolling to gradebook button...")
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", gradebook_button)
+                time.sleep(2)  # Wait for scroll to complete
+                
+                # Try to click using JavaScript
+                logger.info("Attempting to click using JavaScript...")
+                self.driver.execute_script("arguments[0].click();", gradebook_button)
+                
             except Exception as e:
-                logger.warning(f"Original xpath failed: {str(e)}")
-                # Try finding by link text
-                logger.info("Trying to find by link text 'Gradebook'...")
+                logger.warning(f"Primary click method failed: {str(e)}")
+                # Try alternative methods
                 try:
+                    logger.info("Trying to find by link text 'Gradebook'...")
                     gradebook_button = WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.LINK_TEXT, "Gradebook"))
+                        EC.element_to_be_clickable((By.LINK_TEXT, "Gradebook"))
                     )
+                    ActionChains(self.driver).move_to_element(gradebook_button).click().perform()
                 except Exception as e:
-                    logger.warning(f"Link text search failed: {str(e)}")
-                    # Try a more general xpath
-                    logger.info("Trying to find by partial link text...")
+                    logger.warning(f"Link text click failed: {str(e)}")
+                    logger.info("Trying final fallback with partial link text...")
                     gradebook_button = WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.PARTIAL_LINK_TEXT, "grade"))
+                        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "grade"))
                     )
+                    self.driver.execute_script("arguments[0].click();", gradebook_button)
 
-            logger.info("Found gradebook button, attempting to click...")
-            gradebook_button.click()
-            logger.info("Successfully clicked gradebook button")
+            logger.info("Successfully triggered gradebook button click")
 
             # Wait for gradebook to load
             logger.info("Waiting for gradebook to load...")

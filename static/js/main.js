@@ -81,17 +81,35 @@ function sleep(ms) {
 }
 
 function displayResults(data) {
-    // Get ordered periods from the first class (assuming all classes have same period order)
-    const firstClass = Object.values(data.grades)[0];
-    const orderedPeriods = Object.keys(firstClass);
+    // First thing: manage visibility
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('loading-section').classList.add('hidden');
+    document.getElementById('results-section').classList.remove('hidden');
+
+    // Debug logging
+    console.log('Raw data from Python:', data);
+    console.log('Ordered Periods from Python:', data.ordered_periods);
+    console.log('Grades:', data.grades);
+    console.log('Unweighted GPAs:', data.unweighted_gpas);
+    console.log('Weighted GPAs:', data.weighted_gpas);
+
+    // Use the ordered periods from Python
+    const orderedPeriods = data.ordered_periods;
+    console.log('Periods being used for display:', orderedPeriods);
 
     // Create grades table
     const gradesTable = createGradesTable(data.grades, orderedPeriods);
     document.getElementById('grades-table').innerHTML = gradesTable;
     
-    // Get current (most recent) GPAs
-    const currentUnweightedGPA = data.unweighted_gpas[orderedPeriods[orderedPeriods.length - 1]];
-    const currentWeightedGPA = data.weighted_gpas[orderedPeriods[orderedPeriods.length - 1]];
+    // Get current (most recent) GPAs with fallback
+    // Find the last period that has a GPA value
+    const currentPeriod = [...orderedPeriods]
+        .reverse()
+        .find(period => data.unweighted_gpas[period] !== undefined);
+    console.log('Current period:', currentPeriod);
+    const currentUnweightedGPA = data.unweighted_gpas[currentPeriod] || 0;
+    const currentWeightedGPA = data.weighted_gpas[currentPeriod] || 0;
+    console.log('Current GPAs:', { unweighted: currentUnweightedGPA, weighted: currentWeightedGPA });
 
     // Create current GPA section
     const currentGPAHtml = `
@@ -114,14 +132,10 @@ function displayResults(data) {
     
     const weightedTable = createGPATable(data.weighted_gpas, orderedPeriods);
     document.getElementById('weighted-table').innerHTML = weightedTable;
-
-    // Make sure login section is hidden and results section is shown
-    document.getElementById('login-section').classList.add('hidden');
-    document.getElementById('loading-section').classList.add('hidden');
-    document.getElementById('results-section').classList.remove('hidden');
 }
 
 function createGradesTable(grades, orderedPeriods) {
+    console.log('Creating grades table with periods:', orderedPeriods);
     if (!grades || Object.keys(grades).length === 0) {
         return '<p class="text-gray-500">No grades available</p>';
     }
@@ -159,6 +173,8 @@ function createGradesTable(grades, orderedPeriods) {
 }
 
 function createGPATable(gpas, orderedPeriods) {
+    console.log('Creating GPA table with periods:', orderedPeriods);
+    console.log('GPA data:', gpas);
     if (!gpas || Object.keys(gpas).length === 0) {
         return '<p class="text-gray-500">No GPA data available</p>';
     }
@@ -176,16 +192,22 @@ function createGPATable(gpas, orderedPeriods) {
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                ${orderedPeriods.map(period => `
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            ${period}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${gpas[period].toFixed(2)}
-                        </td>
-                    </tr>
-                `).join('')}
+                ${orderedPeriods.map(period => {
+                    // Only create a row if the GPA exists for this period
+                    if (gpas[period] !== undefined) {
+                        return `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    ${period}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    ${gpas[period].toFixed(2)}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    return ''; // Skip periods with no GPA
+                }).join('')}
             </tbody>
         </table>
     `;

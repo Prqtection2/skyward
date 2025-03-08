@@ -12,6 +12,9 @@ class SkywardGPA:
         self.grades = {}
         self.period_gpas = {}
         self.weighted_period_gpas = {}
+        # Define the correct order of periods
+        self.period_order = ['1U1', '1U2', 'NW1', '2U1', '2U2', 'NW2', 'EX1', 'SM1', 
+                            '3U1', '3U2', 'NW3', '4U1', '4U2', 'NW4', 'EX2', 'SM2', 'YR']
         self.ordered_periods = []
 
     def calculate(self):
@@ -80,8 +83,9 @@ class SkywardGPA:
             except:
                 period_labels.append('-')
 
-        # Filter periods (exclude those with 'C')
-        self.ordered_periods = [period for period in period_labels if 'C' not in period]
+        # Filter periods and maintain the correct order
+        self.ordered_periods = [period for period in self.period_order 
+                              if period in period_labels and 'C' not in period]
 
         # Get classes container
         classes_container_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody'

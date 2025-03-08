@@ -4,8 +4,10 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
 import time
 import os
+import subprocess
 
 class SkywardGPA:
     def __init__(self, username, password):
@@ -20,6 +22,11 @@ class SkywardGPA:
         self.period_order = ['1U1', '1U2', 'NW1', '2U1', '2U2', 'NW2', 'EX1', 'SM1', 
                             '3U1', '3U2', 'NW3', '4U1', '4U2', 'NW4', 'EX2', 'SM2', 'YR']
         self.ordered_periods = []
+        
+        # Start Xvfb
+        if not os.environ.get('DISPLAY'):
+            subprocess.Popen(['Xvfb', ':99', '-screen', '0', '1024x768x24'])
+            os.environ['DISPLAY'] = ':99'
 
     def calculate(self):
         try:
@@ -28,9 +35,10 @@ class SkywardGPA:
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
+            options.add_argument('--disable-software-rasterizer')
             
-            # Use system-installed Chrome and chromedriver
-            self.driver = webdriver.Chrome(options=options)
+            service = Service('/usr/local/bin/chromedriver')
+            self.driver = webdriver.Chrome(service=service, options=options)
             
             self.login()
             self.navigate_to_gradebook()

@@ -32,12 +32,11 @@ class SkywardGPA:
             chrome_options.add_argument('--disable-gpu')
             chrome_options.binary_location = "/usr/bin/google-chrome-stable"
             
-            # Set Chrome version explicitly and use custom cache path
-            chrome_version = "114.0.5735.90"  # This matches a stable Chrome version
+            # Configure webdriver-manager
             os.environ['WDM_LOCAL'] = '1'  # Force local cache
             os.environ['WDM_PROGRESS_BAR'] = '0'  # Disable progress bar
             
-            service = Service(ChromeDriverManager(version=chrome_version, cache_valid_range=365).install())
+            service = Service(ChromeDriverManager(driver_version="114.0.5735.90").install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             
             self.login()

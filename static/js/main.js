@@ -29,10 +29,8 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         
         // Update status: Processing grades
         updateLoadingStatus('Accessing gradebook...', 40);
-        await sleep(1000); // Small delay for visual feedback
         
         updateLoadingStatus('Extracting grades...', 60);
-        await sleep(1000);
         
         updateLoadingStatus('Calculating GPAs...', 80);
         const data = await response.json();
@@ -72,6 +70,7 @@ function updateLoadingStatus(message, progress, isError = false) {
         statusElement.classList.add('text-red-500');
         progressBar.classList.remove('bg-blue-500');
         progressBar.classList.add('bg-red-500');
+        return;
     }
     progressBar.style.width = `${progress}%`;
 }
@@ -170,16 +169,17 @@ function displayResults(data) {
                     fill: true
                 },
                 {
-                    label: 'Maximum Possible GPA',
+                    label: `Maximum GPA (${maxPossibleGPA.toFixed(2)})`,
                     data: orderedPeriods.map(period => ({
                         x: period,
                         y: maxPossibleGPA
                     })),
-                    borderColor: 'rgb(239, 68, 68)', // Red color
+                    borderColor: 'rgba(239, 68, 68, 0.5)', // More transparent red
                     borderDash: [5, 5], // Dotted line
-                    borderWidth: 2,
+                    borderWidth: 1, // Thinner line
                     pointRadius: 0, // Hide points
-                    fill: false
+                    fill: false,
+                    order: 1 // Put this dataset behind the GPA line
                 }
             ]
         },
@@ -190,19 +190,30 @@ function displayResults(data) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            if (context.dataset.label === 'Maximum Possible GPA') {
-                                return `Maximum Possible: ${maxPossibleGPA.toFixed(2)}`;
+                            if (context.dataset.label === `Maximum GPA (${maxPossibleGPA.toFixed(2)})`) {
+                                return null; // Don't show max GPA in tooltip
                             }
                             return `GPA: ${context.parsed.y.toFixed(2)}`;
                         }
+                    },
+                    displayColors: false, // Remove color boxes in tooltip
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Semi-transparent background
+                    padding: 8,
+                    titleFont: {
+                        size: 12
+                    },
+                    bodyFont: {
+                        size: 12
                     }
                 },
                 legend: {
                     display: true,
                     labels: {
                         filter: function(legendItem) {
-                            return legendItem.text !== 'Maximum Possible GPA';
-                        }
+                            return true; // Show both labels now
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'line'
                     }
                 }
             },

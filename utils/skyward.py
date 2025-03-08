@@ -2,6 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 
 class SkywardGPA:
@@ -45,8 +47,10 @@ class SkywardGPA:
         # Access the login page
         self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
 
-        # Enter username
-        username_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input')
+        # Wait for and enter username
+        username_input = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
+        )
         username_input.send_keys(self.username)
 
         # Enter password
@@ -57,19 +61,23 @@ class SkywardGPA:
         sign_in_button = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a')
         sign_in_button.click()
 
-        # Wait for the new page to load
-        time.sleep(5)
+        # Wait for new window to appear
+        WebDriverWait(self.driver, 10).until(lambda d: len(d.window_handles) > 1)
 
     def navigate_to_gradebook(self):
         # Switch to the new window
         self.driver.switch_to.window(self.driver.window_handles[1])
 
-        # Navigate to gradebook
-        gradebook_button = self.driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a')
+        # Wait for and click gradebook button
+        gradebook_button = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'))
+        )
         gradebook_button.click()
 
-        # Wait for gradebook to load
-        time.sleep(5)
+        # Wait for gradebook to load (wait for the periods header)
+        WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'))
+        )
 
     def extract_grades(self):
         # Extract grading periods

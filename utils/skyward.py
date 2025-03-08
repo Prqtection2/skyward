@@ -4,8 +4,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 
@@ -25,21 +23,15 @@ class SkywardGPA:
 
     def calculate(self):
         try:
-            chrome_options = Options()
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-gpu')
-            chrome_options.add_argument('--disable-software-rasterizer')
-            chrome_options.add_argument('--remote-debugging-port=9222')
-            chrome_options.binary_location = "/usr/bin/google-chrome"
+            options = webdriver.ChromeOptions()
+            options.add_argument('--headless')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
+            options.binary_location = "/usr/bin/google-chrome"
             
-            # Configure webdriver-manager
-            os.environ['WDM_LOCAL'] = '1'  # Force local cache
-            os.environ['WDM_PROGRESS_BAR'] = '0'  # Disable progress bar
-            
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # Let Selenium handle the driver management
+            self.driver = webdriver.Chrome(options=options)
             
             self.login()
             self.navigate_to_gradebook()

@@ -112,81 +112,157 @@ class SkywardGPA:
             raise Exception("Login failed. Please double-check your password and try again. If you're sure your password is correct, try again in a few minutes.")
 
     def navigate_to_gradebook(self):
-        # Switch to the new window
-        self.driver.switch_to.window(self.driver.window_handles[1])
+        try:
+            logger.info("Attempting to switch to new window...")
+            # Wait for new window and switch to it
+            WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
+            self.driver.switch_to.window(self.driver.window_handles[1])
+            logger.info("Successfully switched to new window")
 
-        # Wait for and click gradebook button
-        gradebook_button = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'))
-        )
-        gradebook_button.click()
+            # Log the current URL
+            logger.info(f"Current URL: {self.driver.current_url}")
+            
+            # Wait for page to load
+            logger.info("Waiting for page to load...")
+            time.sleep(5)  # Give the page some time to load
+            
+            # Log page source for debugging
+            logger.info("Page source length: " + str(len(self.driver.page_source)))
+            
+            logger.info("Looking for gradebook button...")
+            # Try different ways to find the gradebook button
+            try:
+                # First try the original xpath
+                gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
+                logger.info("Trying original xpath...")
+                gradebook_button = WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, gradebook_xpath))
+                )
+            except Exception as e:
+                logger.warning(f"Original xpath failed: {str(e)}")
+                # Try finding by link text
+                logger.info("Trying to find by link text 'Gradebook'...")
+                try:
+                    gradebook_button = WebDriverWait(self.driver, 20).until(
+                        EC.presence_of_element_located((By.LINK_TEXT, "Gradebook"))
+                    )
+                except Exception as e:
+                    logger.warning(f"Link text search failed: {str(e)}")
+                    # Try a more general xpath
+                    logger.info("Trying to find by partial link text...")
+                    gradebook_button = WebDriverWait(self.driver, 20).until(
+                        EC.presence_of_element_located((By.PARTIAL_LINK_TEXT, "grade"))
+                    )
 
-        # Wait for gradebook to load (wait for the periods header)
-        WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'))
-        )
+            logger.info("Found gradebook button, attempting to click...")
+            gradebook_button.click()
+            logger.info("Successfully clicked gradebook button")
+
+            # Wait for gradebook to load
+            logger.info("Waiting for gradebook to load...")
+            WebDriverWait(self.driver, 20).until(
+                EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'))
+            )
+            logger.info("Gradebook loaded successfully")
+
+        except Exception as e:
+            logger.error(f"Error in navigate_to_gradebook: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Take a screenshot for debugging
+            try:
+                screenshot_path = "error_screenshot.png"
+                self.driver.save_screenshot(screenshot_path)
+                logger.info(f"Screenshot saved to {screenshot_path}")
+            except Exception as screenshot_error:
+                logger.error(f"Failed to take screenshot: {str(screenshot_error)}")
+            raise
 
     def extract_grades(self):
-        # Extract grading periods
-        grading_periods_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'
-        grading_periods = self.driver.find_elements(By.XPATH, grading_periods_xpath)
-        
-        # Store period labels
-        period_labels = []
-        for period in grading_periods:
-            try:
-                label = period.get_attribute('innerText')
-                if label:
-                    period_labels.append(label)
-                else:
+        try:
+            logger.info("Starting grade extraction...")
+            # Extract grading periods
+            logger.info("Finding grading periods...")
+            grading_periods_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'
+            grading_periods = self.driver.find_elements(By.XPATH, grading_periods_xpath)
+            logger.info(f"Found {len(grading_periods)} grading periods")
+            
+            # Store period labels
+            period_labels = []
+            for period in grading_periods:
+                try:
+                    label = period.get_attribute('innerText')
+                    if label:
+                        period_labels.append(label)
+                    else:
+                        period_labels.append('-')
+                except Exception as e:
+                    logger.error(f"Error getting period label: {str(e)}")
                     period_labels.append('-')
-            except:
-                period_labels.append('-')
+            
+            logger.info(f"Period labels: {period_labels}")
 
-        # Filter periods and maintain the correct order
-        self.ordered_periods = [period for period in self.period_order 
-                              if period in period_labels and 'C' not in period]
+            # Filter periods and maintain the correct order
+            self.ordered_periods = [period for period in self.period_order 
+                                  if period in period_labels and 'C' not in period]
+            logger.info(f"Ordered periods: {self.ordered_periods}")
 
-        # Get classes container
-        classes_container_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody'
-        classes_container = self.driver.find_element(By.XPATH, classes_container_xpath)
-        class_rows = classes_container.find_elements(By.XPATH, './tr')
+            # Get classes container
+            logger.info("Finding classes container...")
+            classes_container_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody'
+            classes_container = self.driver.find_element(By.XPATH, classes_container_xpath)
+            class_rows = classes_container.find_elements(By.XPATH, './tr')
+            logger.info(f"Found {len(class_rows)} class rows")
 
-        # Extract grades for each class
-        for class_index, class_row in enumerate(class_rows, 1):
-            try:
-                # Get class name
-                class_name_xpath = f'/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody/tr[{class_index}]/td/div/table/tbody/tr[1]/td[2]/span/a'
-                class_name = self.driver.find_element(By.XPATH, class_name_xpath).text
-                
-                # Get grades
-                class_grades = {}
-                is_valid_class = True
+            # Extract grades for each class
+            for class_index, class_row in enumerate(class_rows, 1):
+                try:
+                    logger.info(f"Processing class {class_index}/{len(class_rows)}")
+                    # Get class name
+                    class_name_xpath = f'/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody/tr[{class_index}]/td/div/table/tbody/tr[1]/td[2]/span/a'
+                    class_name = self.driver.find_element(By.XPATH, class_name_xpath).text
+                    logger.info(f"Processing class: {class_name}")
+                    
+                    # Get grades
+                    class_grades = {}
+                    is_valid_class = True
 
-                row_xpath = f'/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[2]/table/tbody/tr[{class_index}]'
-                cells = self.driver.find_elements(By.XPATH, f'{row_xpath}/td')
+                    row_xpath = f'/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[2]/table/tbody/tr[{class_index}]'
+                    cells = self.driver.find_elements(By.XPATH, f'{row_xpath}/td')
+                    logger.info(f"Found {len(cells)} grade cells for {class_name}")
 
-                for cell_index, cell in enumerate(cells):
-                    try:
-                        text = cell.get_attribute('innerText')
-                        if text and text.replace('.', '').isnumeric():
-                            if cell_index < len(period_labels):
-                                class_grades[period_labels[cell_index]] = float(text)
-                        elif text:  # If non-numeric grade found
-                            is_valid_class = False
-                            break
-                    except Exception:
-                        continue
+                    for cell_index, cell in enumerate(cells):
+                        try:
+                            text = cell.get_attribute('innerText')
+                            if text and text.replace('.', '').isnumeric():
+                                if cell_index < len(period_labels):
+                                    class_grades[period_labels[cell_index]] = float(text)
+                            elif text:  # If non-numeric grade found
+                                is_valid_class = False
+                                break
+                        except Exception as e:
+                            logger.error(f"Error processing grade cell {cell_index} for {class_name}: {str(e)}")
+                            continue
 
-                if is_valid_class and class_grades:
-                    self.grades_raw[class_name] = class_grades
-                    filtered_grades = {period: grade for period, grade in class_grades.items() 
-                                    if 'C' not in period}
-                    if filtered_grades:
-                        self.grades[class_name] = filtered_grades
+                    if is_valid_class and class_grades:
+                        logger.info(f"Adding grades for {class_name}: {class_grades}")
+                        self.grades_raw[class_name] = class_grades
+                        filtered_grades = {period: grade for period, grade in class_grades.items() 
+                                        if 'C' not in period}
+                        if filtered_grades:
+                            self.grades[class_name] = filtered_grades
 
-            except Exception:
-                continue
+                except Exception as e:
+                    logger.error(f"Error processing class {class_index}: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    continue
+            
+            logger.info("Grade extraction completed successfully")
+            logger.info(f"Total classes processed: {len(self.grades)}")
+            
+        except Exception as e:
+            logger.error(f"Error in extract_grades: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
 
     def calculate_gpas(self):
         # Calculate unweighted GPAs

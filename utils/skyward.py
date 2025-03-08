@@ -44,25 +44,41 @@ class SkywardGPA:
                 self.driver.quit()
 
     def login(self):
-        # Access the login page
-        self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
+        try:
+            # Access the login page
+            self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
 
-        # Wait for and enter username
-        username_input = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
-        )
-        username_input.send_keys(self.username)
+            # Wait for and enter username
+            username_input = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
+            )
+            username_input.send_keys(self.username)
 
-        # Enter password
-        password_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[2]/td[2]/input')
-        password_input.send_keys(self.password)
+            # Enter password
+            password_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[2]/td[2]/input')
+            password_input.send_keys(self.password)
 
-        # Click sign-in button
-        sign_in_button = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a')
-        sign_in_button.click()
+            # Click sign-in button
+            sign_in_button = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a')
+            sign_in_button.click()
 
-        # Wait for new window to appear
-        WebDriverWait(self.driver, 10).until(lambda d: len(d.window_handles) > 1)
+            # Wait for new window to appear or error message
+            try:
+                WebDriverWait(self.driver, 10).until(lambda d: len(d.window_handles) > 1)
+            except:
+                # Check for error message
+                try:
+                    error_element = WebDriverWait(self.driver, 3).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, 'validation-error'))
+                    )
+                    raise Exception("Incorrect username or password. Please check your credentials and try again.")
+                except:
+                    raise Exception("Login failed. Please double-check your password and try again. If you're sure your password is correct, try again in a few minutes.")
+
+        except Exception as e:
+            if "Incorrect username or password" in str(e) or "Login failed" in str(e):
+                raise e
+            raise Exception("Login failed. Please double-check your password and try again. If you're sure your password is correct, try again in a few minutes.")
 
     def navigate_to_gradebook(self):
         # Switch to the new window

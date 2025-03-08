@@ -28,9 +28,8 @@ class SkywardGPA:
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
-            options.binary_location = "/usr/bin/google-chrome"
             
-            # Let Selenium handle the driver management
+            # Use system-installed Chrome and chromedriver
             self.driver = webdriver.Chrome(options=options)
             
             self.login()

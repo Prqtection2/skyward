@@ -286,41 +286,54 @@ class SkywardGPA:
             raise
 
     def calculate_gpas(self):
+        # First, count how many valid classes we have total
+        total_valid_classes = len(self.grades)
+        
         # Calculate unweighted GPAs
         for period in self.ordered_periods:
             total_gpa = 0
             num_classes = 0
             
-            for class_name, class_grades in self.grades.items():
-                if period in class_grades:
-                    grade = class_grades[period]
-                    gpa = 6.0 - (100 - grade) * 0.1
-                    total_gpa += gpa
-                    num_classes += 1
+            # Check if all classes have grades for this period
+            classes_with_grades = sum(1 for class_grades in self.grades.values() if period in class_grades)
             
-            if num_classes > 0:
-                self.period_gpas[period] = total_gpa / num_classes
+            # Only calculate GPA if all classes have grades
+            if classes_with_grades == total_valid_classes:
+                for class_name, class_grades in self.grades.items():
+                    if period in class_grades:
+                        grade = class_grades[period]
+                        gpa = 6.0 - (100 - grade) * 0.1
+                        total_gpa += gpa
+                        num_classes += 1
+                
+                if num_classes > 0:
+                    self.period_gpas[period] = total_gpa / num_classes
 
         # Calculate weighted GPAs
         for period in self.ordered_periods:
             total_gpa = 0
             num_classes = 0
             
-            for class_name, class_grades in self.grades.items():
-                if period in class_grades:
-                    grade = class_grades[period]
-                    
-                    # Determine base GPA
-                    if "APA" in class_name:
-                        base_gpa = 7.0
-                    elif "AP" in class_name:
-                        base_gpa = 8.0
-                    else:
-                        base_gpa = 6.0
-                    
-                    weighted_gpa = base_gpa - (100 - grade) * 0.1
-                    total_gpa += weighted_gpa
-                    num_classes += 1
+            # Check if all classes have grades for this period
+            classes_with_grades = sum(1 for class_grades in self.grades.values() if period in class_grades)
             
-            if num_classes > 0:
-                self.weighted_period_gpas[period] = total_gpa / num_classes
+            # Only calculate GPA if all classes have grades
+            if classes_with_grades == total_valid_classes:
+                for class_name, class_grades in self.grades.items():
+                    if period in class_grades:
+                        grade = class_grades[period]
+                        
+                        # Determine base GPA
+                        if "APA" in class_name:
+                            base_gpa = 7.0
+                        elif "AP" in class_name:
+                            base_gpa = 8.0
+                        else:
+                            base_gpa = 6.0
+                        
+                        weighted_gpa = base_gpa - (100 - grade) * 0.1
+                        total_gpa += weighted_gpa
+                        num_classes += 1
+                
+                if num_classes > 0:
+                    self.weighted_period_gpas[period] = total_gpa / num_classes

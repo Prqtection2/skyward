@@ -46,8 +46,8 @@ class SkywardGPA:
                 options.add_argument('--headless=new')
                 options.add_argument('--no-sandbox')
                 options.add_argument('--disable-dev-shm-usage')
-            else:  # Local
-                options.add_argument('--headless=new')  # Still use headless for testing
+                # Add these lines for Chromium
+                options.binary_location = '/usr/bin/chromium-browser'
             
             # Common options
             options.add_argument('--disable-gpu')
@@ -57,8 +57,8 @@ class SkywardGPA:
             options.add_experimental_option('excludeSwitches', ['enable-logging'])
             
             logger.info("Initializing Chrome driver...")
-            # Always use ChromeDriverManager for consistent behavior
-            service = ChromeService(ChromeDriverManager().install())
+            # Replace ChromeDriverManager with direct path to chromedriver
+            service = ChromeService('/usr/bin/chromedriver')
             self.driver = webdriver.Chrome(service=service, options=options)
             logger.info("Chrome driver initialized successfully")
             

@@ -41,23 +41,21 @@ class SkywardGPA:
             logger.info("Setting up Chrome options...")
             options = webdriver.ChromeOptions()
             
-            # Set up options based on environment
-            if platform.system() == 'Linux':  # Render
-                options.add_argument('--headless=new')
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
-                # Add these lines for Chromium
-                options.binary_location = '/usr/bin/chromium-browser'
-            
-            # Common options
+            # Common options for both environments
+            options.add_argument('--headless=new')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
             options.add_argument('--start-maximized')
             options.add_argument('--ignore-certificate-errors')
-            options.add_experimental_option('excludeSwitches', ['enable-logging'])
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-infobars')
+            options.add_argument('--disable-notifications')
+            options.add_argument('--disable-popup-blocking')
+            options.binary_location = '/usr/bin/chromium-browser'
             
             logger.info("Initializing Chrome driver...")
-            # Replace ChromeDriverManager with direct path to chromedriver
             service = ChromeService('/usr/bin/chromedriver')
             self.driver = webdriver.Chrome(service=service, options=options)
             logger.info("Chrome driver initialized successfully")
@@ -126,63 +124,49 @@ class SkywardGPA:
     def navigate_to_gradebook(self):
         try:
             logger.info("Attempting to switch to new window...")
-            # Wait for new window and switch to it
             WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
             self.driver.switch_to.window(self.driver.window_handles[1])
             logger.info("Successfully switched to new window")
 
-            # Log the current URL
-            logger.info(f"Current URL: {self.driver.current_url}")
-            
-            # Wait for page to load
-            logger.info("Waiting for page to load...")
-            time.sleep(5)  # Give the page some time to load
-            
-            # Log page source for debugging
-            logger.info("Page source length: " + str(len(self.driver.page_source)))
+            time.sleep(10)  # Give page time to load
             
             logger.info("Looking for gradebook button...")
-            # Try different ways to find the gradebook button
+            
+            # First try direct gradebook button
             try:
-                # First try waiting for element to be clickable
+                logger.info("Trying direct gradebook button...")
                 gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
-                logger.info("Waiting for gradebook button to be clickable...")
-                gradebook_button = WebDriverWait(self.driver, 20).until(
+                gradebook_button = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
                 )
-                
-                # Try to scroll the button into view
-                logger.info("Scrolling to gradebook button...")
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", gradebook_button)
-                time.sleep(2)  # Wait for scroll to complete
-                
-                # Try to click using JavaScript
-                logger.info("Attempting to click using JavaScript...")
                 self.driver.execute_script("arguments[0].click();", gradebook_button)
-                
             except Exception as e:
-                logger.warning(f"Primary click method failed: {str(e)}")
-                # Try alternative methods
+                logger.info("Direct click failed, trying sidebar expansion method...")
                 try:
-                    logger.info("Trying to find by link text 'Gradebook'...")
-                    gradebook_button = WebDriverWait(self.driver, 20).until(
-                        EC.element_to_be_clickable((By.LINK_TEXT, "Gradebook"))
+                    # Try clicking sidebar expansion button first
+                    sidebar_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[1]/li/a'
+                    sidebar_button = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, sidebar_xpath))
                     )
-                    ActionChains(self.driver).move_to_element(gradebook_button).click().perform()
-                except Exception as e:
-                    logger.warning(f"Link text click failed: {str(e)}")
-                    logger.info("Trying final fallback with partial link text...")
-                    gradebook_button = WebDriverWait(self.driver, 20).until(
-                        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "grade"))
+                    self.driver.execute_script("arguments[0].click();", sidebar_button)
+                    
+                    # Wait a moment for sidebar animation
+                    time.sleep(2)
+                    
+                    # Now try gradebook button again
+                    gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
+                    gradebook_button = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
                     )
                     self.driver.execute_script("arguments[0].click();", gradebook_button)
-
-            logger.info("Successfully triggered gradebook button click")
+                except Exception as sidebar_e:
+                    logger.error(f"Both direct and sidebar methods failed. Direct error: {str(e)}, Sidebar error: {str(sidebar_e)}")
+                    raise Exception("Could not access gradebook through either method")
 
             # Wait for gradebook to load
             logger.info("Waiting for gradebook to load...")
             WebDriverWait(self.driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'))
+                EC.presence_of_element_located((By.XPATH, '//th[contains(text(), "1U1")] | //th[contains(text(), "Progress")]'))
             )
             logger.info("Gradebook loaded successfully")
 

@@ -124,62 +124,90 @@ class SkywardGPA:
     def navigate_to_gradebook(self):
         try:
             logger.info("Attempting to switch to new window...")
+            
+            # Take screenshot of initial state
+            self.driver.save_screenshot("before_switch.png")
+            logger.info("Saved initial state screenshot")
+            
             WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
             self.driver.switch_to.window(self.driver.window_handles[1])
             logger.info("Successfully switched to new window")
 
+            # Take screenshot after switch
+            self.driver.save_screenshot("after_switch.png")
+            logger.info("Saved post-switch screenshot")
+            
             time.sleep(10)  # Give page time to load
+            
+            # Take screenshot after wait
+            self.driver.save_screenshot("after_wait.png")
+            logger.info("Saved post-wait screenshot")
             
             logger.info("Looking for gradebook button...")
             
-            # First try direct gradebook button
+            # First check if sidebar needs expansion
             try:
-                logger.info("Trying direct gradebook button...")
+                logger.info("Checking if sidebar needs expansion...")
+                sidebar_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[1]/li/a'
+                sidebar_button = self.driver.find_element(By.XPATH, sidebar_xpath)
+                
+                if sidebar_button.is_displayed():
+                    logger.info("Sidebar expansion button found, clicking...")
+                    self.driver.save_screenshot("before_sidebar_click.png")
+                    self.driver.execute_script("arguments[0].click();", sidebar_button)
+                    time.sleep(2)  # Wait for animation
+                    self.driver.save_screenshot("after_sidebar_click.png")
+            except Exception as e:
+                logger.info(f"No sidebar expansion needed or not found: {str(e)}")
+
+            # Now try gradebook button
+            try:
+                logger.info("Attempting to find gradebook button...")
                 gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
                 gradebook_button = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
                 )
-                self.driver.execute_script("arguments[0].click();", gradebook_button)
-            except Exception as e:
-                logger.info("Direct click failed, trying sidebar expansion method...")
+                
+                # Take screenshot before click
+                self.driver.save_screenshot("before_gradebook_click.png")
+                logger.info("Found gradebook button, attempting to click...")
+                
+                # Try different click methods
                 try:
-                    # Try clicking sidebar expansion button first
-                    sidebar_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[1]/li/a'
-                    sidebar_button = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, sidebar_xpath))
-                    )
-                    self.driver.execute_script("arguments[0].click();", sidebar_button)
-                    
-                    # Wait a moment for sidebar animation
-                    time.sleep(2)
-                    
-                    # Now try gradebook button again
-                    gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
-                    gradebook_button = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
-                    )
                     self.driver.execute_script("arguments[0].click();", gradebook_button)
-                except Exception as sidebar_e:
-                    logger.error(f"Both direct and sidebar methods failed. Direct error: {str(e)}, Sidebar error: {str(sidebar_e)}")
-                    raise Exception("Could not access gradebook through either method")
+                    logger.info("JavaScript click successful")
+                except:
+                    try:
+                        gradebook_button.click()
+                        logger.info("Regular click successful")
+                    except:
+                        ActionChains(self.driver).move_to_element(gradebook_button).click().perform()
+                        logger.info("ActionChains click successful")
+                
+                # Take screenshot after click
+                self.driver.save_screenshot("after_gradebook_click.png")
+                
+            except Exception as e:
+                logger.error(f"Failed to click gradebook button: {str(e)}")
+                self.driver.save_screenshot("gradebook_click_error.png")
+                raise
 
             # Wait for gradebook to load
             logger.info("Waiting for gradebook to load...")
-            WebDriverWait(self.driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, '//th[contains(text(), "1U1")] | //th[contains(text(), "Progress")]'))
-            )
-            logger.info("Gradebook loaded successfully")
+            try:
+                WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, '//th[contains(text(), "1U1")] | //th[contains(text(), "Progress")]'))
+                )
+                logger.info("Gradebook loaded successfully")
+                self.driver.save_screenshot("gradebook_loaded.png")
+            except Exception as e:
+                logger.error("Gradebook failed to load")
+                self.driver.save_screenshot("gradebook_load_error.png")
+                raise
 
         except Exception as e:
             logger.error(f"Error in navigate_to_gradebook: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            # Take a screenshot for debugging
-            try:
-                screenshot_path = "error_screenshot.png"
-                self.driver.save_screenshot(screenshot_path)
-                logger.info(f"Screenshot saved to {screenshot_path}")
-            except Exception as screenshot_error:
-                logger.error(f"Failed to take screenshot: {str(screenshot_error)}")
             raise
 
     def extract_grades(self):

@@ -192,14 +192,16 @@ class SkywardGPA:
                 self.driver.save_screenshot("gradebook_click_error.png")
                 raise
 
-            # Wait for gradebook to load
+            # Wait for gradebook to load - using exact XPath
             logger.info("Waiting for gradebook to load...")
             try:
-                WebDriverWait(self.driver, 20).until(
-                    EC.presence_of_element_located((By.XPATH, '//th[contains(text(), "1U1")] | //th[contains(text(), "Progress")]'))
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, 
+                        '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'
+                    ))
                 )
                 logger.info("Gradebook loaded successfully")
-                self.driver.save_screenshot("gradebook_loaded.png")
+                
             except Exception as e:
                 logger.error("Gradebook failed to load")
                 self.driver.save_screenshot("gradebook_load_error.png")

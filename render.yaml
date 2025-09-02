@@ -9,11 +9,7 @@ services:
       apt-get update
       apt-get install -y wget unzip xvfb curl
       
-      # Install Chrome using snap (more reliable)
-      apt-get install -y snapd
-      snap install chromium
-      
-      # Install chromedriver
+      # Use a simpler approach - just install chromedriver and let webdriver-manager handle Chrome
       wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_120/chromedriver_linux64.zip"
       unzip /tmp/chromedriver.zip -d /usr/local/bin/
       chmod +x /usr/local/bin/chromedriver

@@ -1,3 +1,4 @@
+import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -65,45 +66,59 @@ class SkywardGPA:
             options.add_argument('--disable-infobars')
             options.add_argument('--disable-notifications')
             options.add_argument('--disable-popup-blocking')
-            # Use snap-installed Chromium on Render
+            # Use system Chrome on Render (installed by render.yaml)
             if platform.system() == 'Linux':
-                options.binary_location = '/snap/bin/chromium'
+                options.binary_location = '/usr/bin/google-chrome'
             
             logger.info("Initializing Chrome driver...")
             try:
-                # Priority: system chromedriver (installed by render.yaml) -> local bin -> webdriver-manager
-                system_chromedriver = "/usr/local/bin/chromedriver"
-                if os.path.isfile(system_chromedriver):
-                    logger.info(f"Using system chromedriver at: {system_chromedriver}")
-                    service = ChromeService(system_chromedriver)
+                # Use undetected-chromedriver which handles Chrome installation automatically
+                if platform.system() == 'Linux':
+                    # On Linux (Render), use undetected-chromedriver
+                    self.driver = uc.Chrome(
+                        headless=os.environ.get('HEADLESS', 'true').lower() == 'true',
+                        no_sandbox=True,
+                        disable_dev_shm_usage=True,
+                        disable_gpu=True,
+                        window_size=(1920, 1080),
+                        ignore_certificate_errors=True,
+                        disable_extensions=True,
+                        disable_infobars=True,
+                        disable_notifications=True,
+                        disable_popup_blocking=True
+                    )
                 else:
-                    # Fallback to local bin folder (for local development)
-                    driver_path = os.environ.get('CHROMEDRIVER')
-                    if not driver_path:
-                        candidate_paths = []
-                        if platform.system() == 'Windows':
-                            candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
-                        candidate_paths.append(os.path.join('bin', 'chromedriver'))
-                        for candidate in candidate_paths:
-                            if os.path.isfile(candidate):
-                                driver_path = candidate
-                                break
-                    
-                    if driver_path and os.path.isfile(driver_path):
-                        logger.info(f"Using local chromedriver at: {driver_path}")
-                        service = ChromeService(driver_path)
+                    # On Windows (local development), use regular selenium with local chromedriver
+                    system_chromedriver = "/usr/local/bin/chromedriver"
+                    if os.path.isfile(system_chromedriver):
+                        logger.info(f"Using system chromedriver at: {system_chromedriver}")
+                        service = ChromeService(system_chromedriver)
                     else:
-                        logger.info("No local chromedriver found; attempting webdriver-manager download...")
-                        # Use webdriver-manager to download chromedriver
-                        service = ChromeService(ChromeDriverManager().install())
+                        # Fallback to local bin folder
+                        driver_path = os.environ.get('CHROMEDRIVER')
+                        if not driver_path:
+                            candidate_paths = []
+                            if platform.system() == 'Windows':
+                                candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
+                            candidate_paths.append(os.path.join('bin', 'chromedriver'))
+                            for candidate in candidate_paths:
+                                if os.path.isfile(candidate):
+                                    driver_path = candidate
+                                    break
+                        
+                        if driver_path and os.path.isfile(driver_path):
+                            logger.info(f"Using local chromedriver at: {driver_path}")
+                            service = ChromeService(driver_path)
+                        else:
+                            logger.info("No local chromedriver found; attempting webdriver-manager download...")
+                            service = ChromeService(ChromeDriverManager().install())
+                    
+                    self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
-                logger.error(f"Failed to resolve chromedriver automatically: {str(e)}")
+                logger.error(f"Failed to initialize Chrome driver: {str(e)}")
                 raise Exception(
-                    "Chromedriver not available and network download failed. "
-                    "Set CHROMEDRIVER to a local driver path or place it at bin/chromedriver(.exe)."
+                    "Failed to initialize Chrome driver. Please check your setup."
                 )
-
-            self.driver = webdriver.Chrome(service=service, options=options)
             logger.info("Chrome driver initialized successfully")
             
             # Send progress update before login

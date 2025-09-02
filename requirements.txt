@@ -3,4 +3,5 @@ selenium==4.15.2
 gunicorn==21.2.0
 Werkzeug==2.3.7
 webdriver-manager==4.0.1
-requests==2.31.0 
+requests==2.31.0
+undetected-chromedriver==3.5.4 

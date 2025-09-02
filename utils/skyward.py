@@ -65,10 +65,9 @@ class SkywardGPA:
             options.add_argument('--disable-infobars')
             options.add_argument('--disable-notifications')
             options.add_argument('--disable-popup-blocking')
-            # Allow overriding Chrome binary via env var if needed
-            chrome_binary_env = os.environ.get('CHROME_BINARY')
-            if chrome_binary_env:
-                options.binary_location = chrome_binary_env
+            # Use snap-installed Chromium on Render
+            if platform.system() == 'Linux':
+                options.binary_location = '/snap/bin/chromium'
             
             logger.info("Initializing Chrome driver...")
             try:

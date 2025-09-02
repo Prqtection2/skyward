@@ -3,31 +3,20 @@ services:
     name: skyward
     env: python
     buildCommand: |
-      set -e  # Exit on any error
       echo "Starting build process..."
       
-      # Install Chrome and dependencies
-      echo "Installing dependencies..."
-      apt-get update && apt-get install -y wget gnupg xvfb unzip curl
+      # Install dependencies
+      apt-get update
+      apt-get install -y wget unzip xvfb curl
       
-      # Install Chrome using the official method
-      echo "Installing Chrome..."
-      wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
-      echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-      apt-get update && apt-get install -y google-chrome-stable
+      # Install Chrome using snap (more reliable)
+      apt-get install -y snapd
+      snap install chromium
       
-      # Verify Chrome installation
-      echo "Verifying Chrome installation..."
-      google-chrome --version
-      
-      # Install chromedriver for Chrome 120+ (latest stable)
-      echo "Installing chromedriver..."
+      # Install chromedriver
       wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_120/chromedriver_linux64.zip"
       unzip /tmp/chromedriver.zip -d /usr/local/bin/
       chmod +x /usr/local/bin/chromedriver
-      echo "Verifying chromedriver installation..."
-      chromedriver --version
-      echo "Build process completed successfully!"
       
       pip install -r requirements.txt
     startCommand: |

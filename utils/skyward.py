@@ -89,7 +89,7 @@ class SkywardGPA:
                     logger.info(f"Using local chromedriver at: {driver_path}")
                     service = ChromeService(driver_path)
                 else:
-                    # Try system chromedriver first
+                    # Try system chromedriver first (installed by render.yaml)
                     system_chromedriver = "/usr/local/bin/chromedriver"
                     if os.path.isfile(system_chromedriver):
                         logger.info(f"Using system chromedriver at: {system_chromedriver}")

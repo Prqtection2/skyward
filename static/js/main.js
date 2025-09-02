@@ -33,23 +33,39 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     const progressBar = document.getElementById('progress-bar');
     
     try {
-        // Update status: Logging in
-        updateLoadingStatus('Logging into Skyward...', 20);
+        // Initial status before making request
+        updateLoadingStatus('Connecting to Skyward...', 5);
+        
+        // Create a unique session ID
+        const sessionId = `${username}_${Date.now()}`;
+        
+        // Start polling for progress updates
+        const progressInterval = setInterval(async () => {
+            try {
+                const progressResponse = await fetch(`/progress/${sessionId}`);
+                const progressData = await progressResponse.json();
+                
+                if (progressData.length > 0) {
+                    const latestUpdate = progressData[progressData.length - 1];
+                    updateLoadingStatus(latestUpdate.message, latestUpdate.progress);
+                }
+            } catch (error) {
+                console.log('Progress polling error:', error);
+            }
+        }, 500); // Poll every 500ms
         
         const response = await fetch('/calculate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Session-ID': sessionId,
             },
             body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
         });
         
-        // Update status: Processing grades
-        updateLoadingStatus('Accessing gradebook...', 40);
+        // Stop polling
+        clearInterval(progressInterval);
         
-        updateLoadingStatus('Extracting grades...', 60);
-        
-        updateLoadingStatus('Calculating GPAs...', 80);
         const data = await response.json();
         
         if (data.error) {
@@ -57,8 +73,8 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         }
         
         // Update status: Completing
-        updateLoadingStatus('Preparing results...', 90);
-        await sleep(500);
+        updateLoadingStatus('Preparing results...', 95);
+        await sleep(300);
         
         // Hide loading, show results
         document.getElementById('loading-section').classList.add('hidden');
@@ -68,7 +84,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
         displayResults(data);
         
     } catch (error) {
-        updateLoadingStatus('Error: ' + error.message, 100, true);
+        updateLoadingStatus('Error occurred: ' + error.message, 100, true);
         await sleep(2000);
         
         // Show login section again on error
@@ -130,13 +146,13 @@ function displayResults(data) {
     // Create current GPA section
     const currentGPAHtml = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-blue-50 p-4 rounded-lg">
+            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-[#1C3764]">
                 <h3 class="text-xl font-semibold text-gray-900 mb-2">Current Unweighted GPA</h3>
-                <p class="text-3xl font-bold text-blue-600">${currentUnweightedGPA.toFixed(2)}</p>
+                <p class="text-3xl font-bold text-[#1C3764]">${currentUnweightedGPA.toFixed(2)}</p>
             </div>
-            <div class="bg-purple-50 p-4 rounded-lg">
+            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-[#A23422]">
                 <h3 class="text-xl font-semibold text-gray-900 mb-2">Current Weighted GPA</h3>
-                <p class="text-3xl font-bold text-purple-600">${currentWeightedGPA.toFixed(2)}</p>
+                <p class="text-3xl font-bold text-[#A23422]">${currentWeightedGPA.toFixed(2)}</p>
             </div>
         </div>
     `;
@@ -160,7 +176,7 @@ function displayResults(data) {
 
     // Calculate maximum possible GPA based on actual class composition
     const maxPossibleGPA = Object.keys(data.grades).reduce((sum, className) => {
-        if (className.includes("AP") && !className.includes("APA")) {
+        if ((className.includes("AP") && !className.includes("APA")) || className.includes("Ind Study Tech Applications")) {
             return sum + 8.0;  // AP class
         } else if (className.includes("APA")) {
             return sum + 7.0;  // APA class
@@ -180,10 +196,19 @@ function displayResults(data) {
                 {
                     label: 'Weighted GPA',
                     data: weightedGPAs,
-                    borderColor: 'rgb(147, 51, 234)',
-                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-                    tension: 0.4,
-                    fill: true
+                    borderColor: '#A23422', // Alvin ISD Red
+                    backgroundColor: 'rgba(162, 52, 34, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#A23422',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: '#A23422',
+                    pointHoverBorderColor: 'white',
+                    pointHoverBorderWidth: 3
                 },
                 {
                     label: `Maximum GPA (${maxPossibleGPA.toFixed(2)})`,
@@ -191,46 +216,56 @@ function displayResults(data) {
                         x: period,
                         y: maxPossibleGPA
                     })),
-                    borderColor: 'rgba(239, 68, 68, 0.5)', // More transparent red
-                    borderDash: [5, 5], // Dotted line
-                    borderWidth: 1, // Thinner line
-                    pointRadius: 0, // Hide points
+                    borderColor: 'rgba(28, 55, 100, 0.6)', // Skyward Blue with opacity
+                    borderDash: [8, 4], // Longer dashes
+                    borderWidth: 2,
+                    pointRadius: 0,
                     fill: false,
-                    order: 1 // Put this dataset behind the GPA line
+                    order: 1
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             plugins: {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             if (context.dataset.label === `Maximum GPA (${maxPossibleGPA.toFixed(2)})`) {
-                                return null; // Don't show max GPA in tooltip
+                                return null;
                             }
                             return `GPA: ${context.parsed.y.toFixed(2)}`;
                         }
                     },
-                    displayColors: false, // Remove color boxes in tooltip
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Semi-transparent background
-                    padding: 8,
+                    displayColors: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    padding: 12,
+                    cornerRadius: 8,
                     titleFont: {
-                        size: 12
+                        size: 14,
+                        weight: 'bold'
                     },
                     bodyFont: {
-                        size: 12
+                        size: 13
                     }
                 },
                 legend: {
                     display: true,
+                    position: 'top',
                     labels: {
                         filter: function(legendItem) {
-                            return true; // Show both labels now
+                            return true;
                         },
                         usePointStyle: true,
-                        pointStyle: 'line'
+                        pointStyle: 'line',
+                        padding: 20,
+                        font: {
+                            size: 12,
+                            weight: '500'
+                        }
                     }
                 }
             },
@@ -238,14 +273,34 @@ function displayResults(data) {
                 y: {
                     min: yMin,
                     max: yMax,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)',
+                        drawBorder: false
+                    },
                     ticks: {
                         callback: function(value) {
                             return value.toFixed(2);
-                        }
+                        },
+                        font: {
+                            size: 11
+                        },
+                        padding: 8
+                    },
+                    border: {
+                        display: false
                     }
                 },
                 x: {
                     grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        },
+                        padding: 8
+                    },
+                    border: {
                         display: false
                     }
                 }
@@ -253,6 +308,11 @@ function displayResults(data) {
             interaction: {
                 intersect: false,
                 mode: 'index'
+            },
+            elements: {
+                line: {
+                    borderWidth: 3
+                }
             }
         }
     });

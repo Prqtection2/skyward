@@ -18,9 +18,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class SkywardGPA:
-    def __init__(self, username, password):
+    def __init__(self, username, password, progress_callback=None):
         self.username = username
         self.password = password
+        self.progress_callback = progress_callback
         self.driver = None
         self.grades_raw = {}
         self.grades = {}
@@ -35,14 +36,25 @@ class SkywardGPA:
         if platform.system() == 'Linux' and not os.environ.get('DISPLAY'):
             subprocess.Popen(['Xvfb', ':99', '-screen', '0', '1024x768x24'])
             os.environ['DISPLAY'] = ':99'
+    
+    def send_progress_update(self, message, progress):
+        """Send progress update to frontend"""
+        logger.info(f"Progress: {progress}% - {message}")
+        if self.progress_callback:
+            self.progress_callback(message, progress)
 
     def calculate(self):
         try:
             logger.info("Setting up Chrome options...")
+            # Send initial progress update
+            self.send_progress_update("Connecting to Skyward...", 5)
+            
             options = webdriver.ChromeOptions()
             
             # Common options for both environments
-            options.add_argument('--headless=new')
+            # Only run headless on production (Render) or when explicitly set
+            if os.environ.get('HEADLESS', 'true').lower() == 'true':
+                options.add_argument('--headless=new')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
@@ -53,17 +65,60 @@ class SkywardGPA:
             options.add_argument('--disable-infobars')
             options.add_argument('--disable-notifications')
             options.add_argument('--disable-popup-blocking')
-            options.binary_location = '/usr/bin/chromium-browser'
+            # Allow overriding Chrome binary via env var if needed
+            chrome_binary_env = os.environ.get('CHROME_BINARY')
+            if chrome_binary_env:
+                options.binary_location = chrome_binary_env
             
-            logger.info("Initializing Chrome driver...")
-            service = ChromeService('/usr/bin/chromedriver')
+            logger.info("Initializing Chrome driver (with offline fallback)...")
+            # Offline fallback chain: CHROMEDRIVER env -> bin/chromedriver(.exe) -> webdriver-manager
+            driver_path = os.environ.get('CHROMEDRIVER')
+            if not driver_path:
+                # Look for a local bin folder driver
+                candidate_paths = []
+                if platform.system() == 'Windows':
+                    candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
+                candidate_paths.append(os.path.join('bin', 'chromedriver'))
+                for candidate in candidate_paths:
+                    if os.path.isfile(candidate):
+                        driver_path = candidate
+                        break
+
+            try:
+                if driver_path and os.path.isfile(driver_path):
+                    logger.info(f"Using local chromedriver at: {driver_path}")
+                    service = ChromeService(driver_path)
+                else:
+                    logger.info("No local chromedriver found; attempting webdriver-manager download...")
+                    service = ChromeService(ChromeDriverManager().install())
+            except Exception as e:
+                logger.error(f"Failed to resolve chromedriver automatically: {str(e)}")
+                raise Exception(
+                    "Chromedriver not available and network download failed. "
+                    "Set CHROMEDRIVER to a local driver path or place it at bin/chromedriver(.exe)."
+                )
+
             self.driver = webdriver.Chrome(service=service, options=options)
             logger.info("Chrome driver initialized successfully")
             
+            # Send progress update before login
+            self.send_progress_update("Logging into Skyward...", 20)
             self.login()
+            
+            # Send progress update before gradebook navigation
+            self.send_progress_update("Accessing gradebook...", 35)
             self.navigate_to_gradebook()
+            
+            # Send progress update before grade extraction
+            self.send_progress_update("Extracting grades...", 50)
             self.extract_grades()
+            
+            # Send progress update before GPA calculation
+            self.send_progress_update("Analyzing class data...", 65)
             self.calculate_gpas()
+            
+            # Send final progress update
+            self.send_progress_update("Calculating GPAs...", 80)
             
             return {
                 'grades_raw': self.grades_raw,
@@ -125,23 +180,19 @@ class SkywardGPA:
         try:
             logger.info("Attempting to switch to new window...")
             
-            # Take screenshot of initial state
-            self.driver.save_screenshot("before_switch.png")
-            logger.info("Saved initial state screenshot")
+
             
             WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
             self.driver.switch_to.window(self.driver.window_handles[1])
             logger.info("Successfully switched to new window")
 
-            # Take screenshot after switch
-            self.driver.save_screenshot("after_switch.png")
-            logger.info("Saved post-switch screenshot")
+            # Wait for the main page to load instead of static sleep
+            logger.info("Waiting for main page to load...")
+            WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
             
-            time.sleep(10)  # Give page time to load
-            
-            # Take screenshot after wait
-            self.driver.save_screenshot("after_wait.png")
-            logger.info("Saved post-wait screenshot")
+
             
             logger.info("Looking for gradebook button...")
             
@@ -153,23 +204,33 @@ class SkywardGPA:
                 
                 if sidebar_button.is_displayed():
                     logger.info("Sidebar expansion button found, clicking...")
-                    self.driver.save_screenshot("before_sidebar_click.png")
                     self.driver.execute_script("arguments[0].click();", sidebar_button)
-                    time.sleep(2)  # Wait for animation
-                    self.driver.save_screenshot("after_sidebar_click.png")
+                    # Wait for sidebar animation to complete
+                    WebDriverWait(self.driver, 5).until(
+                        lambda d: d.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]').is_displayed()
+                    )
             except Exception as e:
                 logger.info(f"No sidebar expansion needed or not found: {str(e)}")
 
-            # Now try gradebook button
+            # Now try gradebook button with updated XPath and text fallback
             try:
                 logger.info("Attempting to find gradebook button...")
-                gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[3]/a'
-                gradebook_button = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
-                )
                 
-                # Take screenshot before click
-                self.driver.save_screenshot("before_gradebook_click.png")
+                # Try the updated XPath first
+                gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[2]/a'
+                try:
+                    gradebook_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
+                    )
+                    logger.info("Found gradebook button using updated XPath")
+                except:
+                    # Fallback: look for any link with "Gradebook" text
+                    logger.info("XPath not found, trying text-based search...")
+                    gradebook_button = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Gradebook')]"))
+                    )
+                    logger.info("Found gradebook button using text search")
+                
                 logger.info("Found gradebook button, attempting to click...")
                 
                 # Try different click methods
@@ -184,12 +245,10 @@ class SkywardGPA:
                         ActionChains(self.driver).move_to_element(gradebook_button).click().perform()
                         logger.info("ActionChains click successful")
                 
-                # Take screenshot after click
-                self.driver.save_screenshot("after_gradebook_click.png")
+
                 
             except Exception as e:
                 logger.error(f"Failed to click gradebook button: {str(e)}")
-                self.driver.save_screenshot("gradebook_click_error.png")
                 raise
 
             # Wait for gradebook to load - using exact XPath
@@ -204,7 +263,6 @@ class SkywardGPA:
                 
             except Exception as e:
                 logger.error("Gradebook failed to load")
-                self.driver.save_screenshot("gradebook_load_error.png")
                 raise
 
         except Exception as e:
@@ -340,7 +398,7 @@ class SkywardGPA:
                         # Determine base GPA
                         if "APA" in class_name:
                             base_gpa = 7.0
-                        elif "AP" in class_name:
+                        elif "AP" in class_name or "Ind Study Tech Applications" in class_name:
                             base_gpa = 8.0
                         else:
                             base_gpa = 6.0

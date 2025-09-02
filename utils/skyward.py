@@ -70,33 +70,33 @@ class SkywardGPA:
             if chrome_binary_env:
                 options.binary_location = chrome_binary_env
             
-            logger.info("Initializing Chrome driver (with offline fallback)...")
-            # Offline fallback chain: CHROMEDRIVER env -> bin/chromedriver(.exe) -> webdriver-manager
-            driver_path = os.environ.get('CHROMEDRIVER')
-            if not driver_path:
-                # Look for a local bin folder driver
-                candidate_paths = []
-                if platform.system() == 'Windows':
-                    candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
-                candidate_paths.append(os.path.join('bin', 'chromedriver'))
-                for candidate in candidate_paths:
-                    if os.path.isfile(candidate):
-                        driver_path = candidate
-                        break
-
+            logger.info("Initializing Chrome driver...")
             try:
-                if driver_path and os.path.isfile(driver_path):
-                    logger.info(f"Using local chromedriver at: {driver_path}")
-                    service = ChromeService(driver_path)
+                # Priority: system chromedriver (installed by render.yaml) -> local bin -> webdriver-manager
+                system_chromedriver = "/usr/local/bin/chromedriver"
+                if os.path.isfile(system_chromedriver):
+                    logger.info(f"Using system chromedriver at: {system_chromedriver}")
+                    service = ChromeService(system_chromedriver)
                 else:
-                    # Try system chromedriver first (installed by render.yaml)
-                    system_chromedriver = "/usr/local/bin/chromedriver"
-                    if os.path.isfile(system_chromedriver):
-                        logger.info(f"Using system chromedriver at: {system_chromedriver}")
-                        service = ChromeService(system_chromedriver)
+                    # Fallback to local bin folder (for local development)
+                    driver_path = os.environ.get('CHROMEDRIVER')
+                    if not driver_path:
+                        candidate_paths = []
+                        if platform.system() == 'Windows':
+                            candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
+                        candidate_paths.append(os.path.join('bin', 'chromedriver'))
+                        for candidate in candidate_paths:
+                            if os.path.isfile(candidate):
+                                driver_path = candidate
+                                break
+                    
+                    if driver_path and os.path.isfile(driver_path):
+                        logger.info(f"Using local chromedriver at: {driver_path}")
+                        service = ChromeService(driver_path)
                     else:
                         logger.info("No local chromedriver found; attempting webdriver-manager download...")
-                        service = ChromeService(ChromeDriverManager().install())
+                        # Use a specific chromedriver version that's known to work
+                        service = ChromeService(ChromeDriverManager(version="120.0.6099.109").install())
             except Exception as e:
                 logger.error(f"Failed to resolve chromedriver automatically: {str(e)}")
                 raise Exception(

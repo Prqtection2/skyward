@@ -5,12 +5,20 @@ services:
     buildCommand: |
       # Install Chrome and dependencies
       apt-get update
-      apt-get install -y wget gnupg xvfb
+      apt-get install -y wget gnupg xvfb unzip
       wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-chrome-archive-keyring.gpg
       echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-archive-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list
       apt-get update
       apt-get install -y google-chrome-stable
       google-chrome --version
+      
+      # Install chromedriver
+      CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+      wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%%.*}/chromedriver_linux64.zip"
+      unzip /tmp/chromedriver.zip -d /usr/local/bin/
+      chmod +x /usr/local/bin/chromedriver
+      chromedriver --version
+      
       pip install -r requirements.txt
     startCommand: |
       Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
@@ -19,5 +27,9 @@ services:
       - key: PYTHON_VERSION
         value: 3.9.0
       - key: PYTHONUNBUFFERED
+        value: "true"
+      - key: CHROMEDRIVER
+        value: "/usr/local/bin/chromedriver"
+      - key: HEADLESS
         value: "true"
     autoDeploy: true

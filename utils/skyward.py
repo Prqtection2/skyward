@@ -89,8 +89,14 @@ class SkywardGPA:
                     logger.info(f"Using local chromedriver at: {driver_path}")
                     service = ChromeService(driver_path)
                 else:
-                    logger.info("No local chromedriver found; attempting webdriver-manager download...")
-                    service = ChromeService(ChromeDriverManager().install())
+                    # Try system chromedriver first
+                    system_chromedriver = "/usr/local/bin/chromedriver"
+                    if os.path.isfile(system_chromedriver):
+                        logger.info(f"Using system chromedriver at: {system_chromedriver}")
+                        service = ChromeService(system_chromedriver)
+                    else:
+                        logger.info("No local chromedriver found; attempting webdriver-manager download...")
+                        service = ChromeService(ChromeDriverManager().install())
             except Exception as e:
                 logger.error(f"Failed to resolve chromedriver automatically: {str(e)}")
                 raise Exception(

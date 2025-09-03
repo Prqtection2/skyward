@@ -46,51 +46,24 @@ class SkywardGPA:
 
     def calculate(self):
         try:
-            logger.info("Setting up Chrome options...")
+            logger.info("Initializing Chrome driver...")
             # Send initial progress update
             self.send_progress_update("Connecting to Skyward...", 5)
             
-            options = webdriver.ChromeOptions()
-            
-            # Common options for both environments
-            # Only run headless on production (Render) or when explicitly set
-            if os.environ.get('HEADLESS', 'true').lower() == 'true':
-                options.add_argument('--headless=new')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--window-size=1920,1080')
-            options.add_argument('--start-maximized')
-            options.add_argument('--ignore-certificate-errors')
-            options.add_argument('--disable-extensions')
-            options.add_argument('--disable-infobars')
-            options.add_argument('--disable-notifications')
-            options.add_argument('--disable-popup-blocking')
-            # Use system Chrome on Render (installed by render.yaml)
-            if platform.system() == 'Linux':
-                options.binary_location = '/usr/bin/google-chrome'
-            
-            logger.info("Initializing Chrome driver...")
             try:
                 # Use undetected-chromedriver which handles Chrome installation automatically
                 if platform.system() == 'Linux':
                     # On Linux (Render), use undetected-chromedriver
                     self.driver = uc.Chrome(
-                        headless=os.environ.get('HEADLESS', 'true').lower() == 'true',
-                        options=[
-                            '--no-sandbox',
-                            '--disable-dev-shm-usage',
-                            '--disable-gpu',
-                            '--window-size=1920,1080',
-                            '--ignore-certificate-errors',
-                            '--disable-extensions',
-                            '--disable-infobars',
-                            '--disable-notifications',
-                            '--disable-popup-blocking'
-                        ]
+                        headless=os.environ.get('HEADLESS', 'true').lower() == 'true'
                     )
                 else:
                     # On Windows (local development), use regular selenium with local chromedriver
+                    options = webdriver.ChromeOptions()
+                    options.add_argument('--no-sandbox')
+                    options.add_argument('--disable-dev-shm-usage')
+                    options.add_argument('--disable-gpu')
+                    
                     system_chromedriver = "/usr/local/bin/chromedriver"
                     if os.path.isfile(system_chromedriver):
                         logger.info(f"Using system chromedriver at: {system_chromedriver}")

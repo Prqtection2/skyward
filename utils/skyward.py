@@ -77,15 +77,17 @@ class SkywardGPA:
                     # On Linux (Render), use undetected-chromedriver
                     self.driver = uc.Chrome(
                         headless=os.environ.get('HEADLESS', 'true').lower() == 'true',
-                        no_sandbox=True,
-                        disable_dev_shm_usage=True,
-                        disable_gpu=True,
-                        window_size=(1920, 1080),
-                        ignore_certificate_errors=True,
-                        disable_extensions=True,
-                        disable_infobars=True,
-                        disable_notifications=True,
-                        disable_popup_blocking=True
+                        options=[
+                            '--no-sandbox',
+                            '--disable-dev-shm-usage',
+                            '--disable-gpu',
+                            '--window-size=1920,1080',
+                            '--ignore-certificate-errors',
+                            '--disable-extensions',
+                            '--disable-infobars',
+                            '--disable-notifications',
+                            '--disable-popup-blocking'
+                        ]
                     )
                 else:
                     # On Windows (local development), use regular selenium with local chromedriver

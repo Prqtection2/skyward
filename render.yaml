@@ -7,19 +7,16 @@ services:
       
       # Install dependencies
       apt-get update
-      apt-get install -y wget unzip xvfb curl gnupg ca-certificates
+      apt-get install -y wget unzip xvfb curl
       
-      # Install Chrome using a more reliable method
-      curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-archive-keyring.gpg
-      echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-archive-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
-      apt-get update
-      apt-get install -y google-chrome-stable
+      # Try installing Chromium instead of Chrome (more reliable)
+      apt-get install -y chromium-browser
       
-      # Verify Chrome installation
-      echo "Chrome version:"
-      google-chrome --version
+      # Verify Chromium installation
+      echo "Chromium version:"
+      chromium-browser --version
       
-      # Install chromedriver
+      # Install chromedriver for Chromium
       echo "Installing chromedriver..."
       wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_120/chromedriver_linux64.zip"
       unzip /tmp/chromedriver.zip -d /usr/local/bin/

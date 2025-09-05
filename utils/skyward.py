@@ -71,6 +71,8 @@ class SkywardGPA:
                 if os.path.isfile(system_chromedriver):
                     logger.info(f"Using system chromedriver at: {system_chromedriver}")
                     service = ChromeService(system_chromedriver)
+                    # Set Chromium binary location
+                    options.binary_location = '/usr/bin/chromium-browser'
                 else:
                     # Fallback to local bin folder (for local development)
                     driver_path = os.environ.get('CHROMEDRIVER')

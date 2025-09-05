@@ -1,4 +1,3 @@
-import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -51,44 +50,48 @@ class SkywardGPA:
             self.send_progress_update("Connecting to Skyward...", 5)
             
             try:
-                # Use undetected-chromedriver which handles Chrome installation automatically
-                if platform.system() == 'Linux':
-                    # On Linux (Render), use undetected-chromedriver
-                    self.driver = uc.Chrome(
-                        headless=os.environ.get('HEADLESS', 'true').lower() == 'true'
-                    )
+                # Set up Chrome options
+                options = webdriver.ChromeOptions()
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-gpu')
+                options.add_argument('--disable-extensions')
+                options.add_argument('--disable-infobars')
+                options.add_argument('--disable-notifications')
+                options.add_argument('--disable-popup-blocking')
+                options.add_argument('--ignore-certificate-errors')
+                options.add_argument('--window-size=1920,1080')
+                
+                # Only run headless on production (Render) or when explicitly set
+                if os.environ.get('HEADLESS', 'true').lower() == 'true':
+                    options.add_argument('--headless=new')
+                
+                # Use system chromedriver (installed by render.yaml)
+                system_chromedriver = "/usr/local/bin/chromedriver"
+                if os.path.isfile(system_chromedriver):
+                    logger.info(f"Using system chromedriver at: {system_chromedriver}")
+                    service = ChromeService(system_chromedriver)
                 else:
-                    # On Windows (local development), use regular selenium with local chromedriver
-                    options = webdriver.ChromeOptions()
-                    options.add_argument('--no-sandbox')
-                    options.add_argument('--disable-dev-shm-usage')
-                    options.add_argument('--disable-gpu')
+                    # Fallback to local bin folder (for local development)
+                    driver_path = os.environ.get('CHROMEDRIVER')
+                    if not driver_path:
+                        candidate_paths = []
+                        if platform.system() == 'Windows':
+                            candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
+                        candidate_paths.append(os.path.join('bin', 'chromedriver'))
+                        for candidate in candidate_paths:
+                            if os.path.isfile(candidate):
+                                driver_path = candidate
+                                break
                     
-                    system_chromedriver = "/usr/local/bin/chromedriver"
-                    if os.path.isfile(system_chromedriver):
-                        logger.info(f"Using system chromedriver at: {system_chromedriver}")
-                        service = ChromeService(system_chromedriver)
+                    if driver_path and os.path.isfile(driver_path):
+                        logger.info(f"Using local chromedriver at: {driver_path}")
+                        service = ChromeService(driver_path)
                     else:
-                        # Fallback to local bin folder
-                        driver_path = os.environ.get('CHROMEDRIVER')
-                        if not driver_path:
-                            candidate_paths = []
-                            if platform.system() == 'Windows':
-                                candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
-                            candidate_paths.append(os.path.join('bin', 'chromedriver'))
-                            for candidate in candidate_paths:
-                                if os.path.isfile(candidate):
-                                    driver_path = candidate
-                                    break
-                        
-                        if driver_path and os.path.isfile(driver_path):
-                            logger.info(f"Using local chromedriver at: {driver_path}")
-                            service = ChromeService(driver_path)
-                        else:
-                            logger.info("No local chromedriver found; attempting webdriver-manager download...")
-                            service = ChromeService(ChromeDriverManager().install())
-                    
-                    self.driver = webdriver.Chrome(service=service, options=options)
+                        logger.info("No local chromedriver found; attempting webdriver-manager download...")
+                        service = ChromeService(ChromeDriverManager().install())
+                
+                self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
                 logger.error(f"Failed to initialize Chrome driver: {str(e)}")
                 raise Exception(
@@ -137,6 +140,13 @@ class SkywardGPA:
         try:
             logger.info("Attempting to access login page...")
             self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
+            
+            # First, click the link to open the username/password fields
+            logger.info("Clicking to open username/password fields...")
+            login_link = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[10]/td/a'))
+            )
+            login_link.click()
             
             logger.info("Waiting for username input...")
             username_input = WebDriverWait(self.driver, 10).until(

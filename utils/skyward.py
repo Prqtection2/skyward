@@ -6,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.action_chains import ActionChains
-from webdriver_manager.chrome import ChromeDriverManager
 import platform
 import time
 import os
@@ -90,8 +89,8 @@ class SkywardGPA:
                         logger.info(f"Using local chromedriver at: {driver_path}")
                         service = ChromeService(driver_path)
                     else:
-                        logger.info("No local chromedriver found; attempting webdriver-manager download...")
-                        service = ChromeService(ChromeDriverManager().install())
+                        # No webdriver-manager fallback - fail fast
+                        raise Exception("No chromedriver found. Please ensure Chrome and chromedriver are properly installed.")
                 
                 self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:

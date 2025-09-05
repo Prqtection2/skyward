@@ -66,13 +66,13 @@ class SkywardGPA:
                 if os.environ.get('HEADLESS', 'true').lower() == 'true':
                     options.add_argument('--headless=new')
                 
-                # Use system chromedriver (installed by render.yaml)
+                # Use system chromedriver (installed by Dockerfile)
                 system_chromedriver = "/usr/local/bin/chromedriver"
                 if os.path.isfile(system_chromedriver):
                     logger.info(f"Using system chromedriver at: {system_chromedriver}")
                     service = ChromeService(system_chromedriver)
-                    # Set Chromium binary location
-                    options.binary_location = '/usr/bin/chromium-browser'
+                    # Set Chrome binary location
+                    options.binary_location = '/usr/bin/google-chrome'
                 else:
                     # Fallback to local bin folder (for local development)
                     driver_path = os.environ.get('CHROMEDRIVER')

@@ -1,36 +1,8 @@
 services:
   - type: web
     name: skyward
-    env: python
-    buildCommand: |
-      echo "Starting build process..."
-      
-      # Install dependencies
-      apt-get update
-      apt-get install -y wget unzip xvfb curl
-      
-      # Try installing Chromium instead of Chrome (more reliable)
-      apt-get install -y chromium-browser
-      
-      # Verify Chromium installation
-      echo "Chromium version:"
-      chromium-browser --version
-      
-      # Install chromedriver for Chromium
-      echo "Installing chromedriver..."
-      wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_120/chromedriver_linux64.zip"
-      unzip /tmp/chromedriver.zip -d /usr/local/bin/
-      chmod +x /usr/local/bin/chromedriver
-      echo "Chromedriver version:"
-      chromedriver --version
-      
-      pip install -r requirements.txt
-    startCommand: |
-      Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-      DISPLAY=:99 gunicorn app:app
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.0
       - key: PYTHONUNBUFFERED
         value: "true"
       - key: HEADLESS

@@ -1,13 +1,11 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.action_chains import ActionChains
 import platform
-import time
 import os
 import subprocess
 import traceback
@@ -67,30 +65,10 @@ class SkywardGPA:
                 
                 # Use system chromedriver (installed by Dockerfile)
                 system_chromedriver = "/usr/local/bin/chromedriver"
-                if os.path.isfile(system_chromedriver):
-                    logger.info(f"Using system chromedriver at: {system_chromedriver}")
-                    service = ChromeService(system_chromedriver)
-                    # Set Chrome binary location
-                    options.binary_location = '/usr/bin/google-chrome'
-                else:
-                    # Fallback to local bin folder (for local development)
-                    driver_path = os.environ.get('CHROMEDRIVER')
-                    if not driver_path:
-                        candidate_paths = []
-                        if platform.system() == 'Windows':
-                            candidate_paths.append(os.path.join('bin', 'chromedriver.exe'))
-                        candidate_paths.append(os.path.join('bin', 'chromedriver'))
-                        for candidate in candidate_paths:
-                            if os.path.isfile(candidate):
-                                driver_path = candidate
-                                break
-                    
-                    if driver_path and os.path.isfile(driver_path):
-                        logger.info(f"Using local chromedriver at: {driver_path}")
-                        service = ChromeService(driver_path)
-                    else:
-                        # No webdriver-manager fallback - fail fast
-                        raise Exception("No chromedriver found. Please ensure Chrome and chromedriver are properly installed.")
+                logger.info(f"Using system chromedriver at: {system_chromedriver}")
+                service = ChromeService(system_chromedriver)
+                # Set Chrome binary location
+                options.binary_location = '/usr/bin/google-chrome'
                 
                 self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
@@ -140,16 +118,19 @@ class SkywardGPA:
     def login(self):
         try:
             logger.info("Attempting to access login page...")
+            self.send_progress_update("Connecting to Skyward...", 10)
             self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
             
             # First, click the link to open the username/password fields
             logger.info("Clicking to open username/password fields...")
+            self.send_progress_update("Opening login form...", 15)
             login_link = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[10]/td/a'))
             )
             login_link.click()
             
             logger.info("Waiting for username input...")
+            self.send_progress_update("Logging in...", 20)
             username_input = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
             )
@@ -185,22 +166,20 @@ class SkywardGPA:
     def navigate_to_gradebook(self):
         try:
             logger.info("Attempting to switch to new window...")
-            
-
-            
+            self.send_progress_update("Switching to main window...", 25)
             WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
             self.driver.switch_to.window(self.driver.window_handles[1])
             logger.info("Successfully switched to new window")
 
             # Wait for the main page to load instead of static sleep
             logger.info("Waiting for main page to load...")
+            self.send_progress_update("Loading main page...", 30)
             WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
             
-
-            
             logger.info("Looking for gradebook button...")
+            self.send_progress_update("Navigating to gradebook...", 35)
             
             # First check if sidebar needs expansion
             try:
@@ -251,8 +230,6 @@ class SkywardGPA:
                         ActionChains(self.driver).move_to_element(gradebook_button).click().perform()
                         logger.info("ActionChains click successful")
                 
-
-                
             except Exception as e:
                 logger.error(f"Failed to click gradebook button: {str(e)}")
                 raise
@@ -279,6 +256,7 @@ class SkywardGPA:
     def extract_grades(self):
         try:
             logger.info("Starting grade extraction...")
+            self.send_progress_update("Fetching gradebook...", 40)
             # Extract grading periods
             logger.info("Finding grading periods...")
             grading_periods_xpath = '/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[1]/div/div[1]/div[1]/table/thead/tr/th'
@@ -316,6 +294,10 @@ class SkywardGPA:
             for class_index, class_row in enumerate(class_rows, 1):
                 try:
                     logger.info(f"Processing class {class_index}/{len(class_rows)}")
+                    # Update progress during grade extraction
+                    progress = 40 + int((class_index / len(class_rows)) * 10)  # 40-50%
+                    self.send_progress_update(f"Getting grades ({class_index}/{len(class_rows)})...", progress)
+                    
                     # Get class name
                     class_name_xpath = f'/html/body/div[1]/div[2]/div[2]/div[2]/div/div[4]/div[4]/div[2]/div[2]/div[2]/table/tbody/tr[{class_index}]/td/div/table/tbody/tr[1]/td[2]/span/a'
                     class_name = self.driver.find_element(By.XPATH, class_name_xpath).text

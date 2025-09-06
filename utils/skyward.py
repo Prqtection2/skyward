@@ -384,7 +384,7 @@ class SkywardGPA:
                         grade = class_grades[period]
                         
                         # Determine base GPA
-                        if "APA" in class_name:
+                        if "APA" in class_name or "Academic Dec 1" in class_name:
                             base_gpa = 7.0
                         elif "AP" in class_name or "Ind Study Tech Applications" in class_name:
                             base_gpa = 8.0

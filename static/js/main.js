@@ -178,7 +178,7 @@ function displayResults(data) {
     const maxPossibleGPA = Object.keys(data.grades).reduce((sum, className) => {
         if ((className.includes("AP") && !className.includes("APA")) || className.includes("Ind Study Tech Applications")) {
             return sum + 8.0;  // AP class
-        } else if (className.includes("APA")) {
+        } else if (className.includes("APA") || className.includes("Academic Dec 1")) {
             return sum + 7.0;  // APA class
         }
         return sum + 6.0;  // Regular class

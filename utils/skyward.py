@@ -73,8 +73,9 @@ class SkywardGPA:
                 self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
                 logger.error(f"Failed to initialize Chrome driver: {str(e)}")
+                logger.error(f"Chrome driver traceback: {traceback.format_exc()}")
                 raise Exception(
-                    "Failed to initialize Chrome driver. Please check your setup."
+                    f"Failed to initialize Chrome driver: {str(e)}"
                 )
             logger.info("Chrome driver initialized successfully")
             
@@ -159,9 +160,11 @@ class SkywardGPA:
                     raise Exception("Login failed. Please double-check your password and try again. If you're sure your password is correct, try again in a few minutes.")
 
         except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            logger.error(f"Login traceback: {traceback.format_exc()}")
             if "Incorrect username or password" in str(e) or "Login failed" in str(e):
                 raise e
-            raise Exception("Login failed. Please double-check your password and try again. If you're sure your password is correct, try again in a few minutes.")
+            raise Exception(f"Login failed: {str(e)}")
 
     def navigate_to_gradebook(self):
         try:

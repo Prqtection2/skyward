@@ -144,7 +144,7 @@ class SkywardGPA:
             # Try the original XPath first
             try:
                 login_link = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[10]/td/a'))
+                    EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a'))
                 )
                 logger.info("Found login link with original XPath")
             except:

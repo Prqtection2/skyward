@@ -39,6 +39,15 @@ class SkywardGPA:
         logger.info(f"Progress: {progress}% - {message}")
         if self.progress_callback:
             self.progress_callback(message, progress)
+    
+    def take_debug_screenshot(self, step_name):
+        """Take a screenshot for debugging purposes"""
+        try:
+            screenshot_path = f"/tmp/debug_{step_name}.png"
+            self.driver.save_screenshot(screenshot_path)
+            logger.info(f"Debug screenshot saved: {screenshot_path}")
+        except Exception as e:
+            logger.error(f"Failed to take screenshot: {e}")
 
     def calculate(self):
         try:
@@ -60,8 +69,11 @@ class SkywardGPA:
                 options.add_argument('--window-size=1920,1080')
                 
                 # Only run headless on production (Render) or when explicitly set
+                # Set HEADLESS=false to debug visually
                 if os.environ.get('HEADLESS', 'true').lower() == 'true':
                     options.add_argument('--headless=new')
+                else:
+                    logger.info("Running in NON-HEADLESS mode for debugging")
                 
                 # Use system chromedriver (installed by Dockerfile)
                 system_chromedriver = "/usr/local/bin/chromedriver"
@@ -122,13 +134,44 @@ class SkywardGPA:
             self.send_progress_update("Connecting to Skyward...", 10)
             self.driver.get("https://skyward-alvinprod.iscorp.com/scripts/wsisa.dll/WService=wsedualvinisdtx/fwemnu01.w")
             
+            # Take screenshot of initial login page
+            self.take_debug_screenshot("01_initial_login_page")
+            
             # First, click the link to open the username/password fields
             logger.info("Clicking to open username/password fields...")
             self.send_progress_update("Opening login form...", 15)
-            login_link = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[10]/td/a'))
-            )
+            
+            # Try the original XPath first
+            try:
+                login_link = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[10]/td/a'))
+                )
+                logger.info("Found login link with original XPath")
+            except:
+                # If original XPath fails, try alternative approaches
+                logger.info("Original XPath failed, trying alternatives...")
+                self.take_debug_screenshot("02_login_page_failed_xpath")
+                
+                # Try to find any clickable link that might open login form
+                try:
+                    # Look for common login button text patterns
+                    login_link = WebDriverWait(self.driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Login') or contains(text(), 'Sign In') or contains(text(), 'Enter')]"))
+                    )
+                    logger.info("Found login link with text-based search")
+                except:
+                    # Try to find any link in the form
+                    try:
+                        login_link = WebDriverWait(self.driver, 5).until(
+                            EC.element_to_be_clickable((By.XPATH, "//form//a"))
+                        )
+                        logger.info("Found login link with form-based search")
+                    except:
+                        raise Exception("Could not find login link - Skyward may have changed their login page layout")
             login_link.click()
+            
+            # Take screenshot after clicking login link
+            self.take_debug_screenshot("03_after_login_click")
             
             logger.info("Waiting for username input...")
             self.send_progress_update("Logging in...", 20)

@@ -185,13 +185,39 @@ class SkywardGPA:
             password_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[2]/td[2]/input')
             password_input.send_keys(self.password)
 
+            # Wait for loading overlay to disappear before clicking sign-in button
+            logger.info("Waiting for loading overlay to disappear...")
+            try:
+                WebDriverWait(self.driver, 10).until(
+                    lambda d: not d.find_element(By.ID, "lockDiv").is_displayed()
+                )
+                logger.info("Loading overlay disappeared")
+            except:
+                logger.info("Loading overlay not found or already gone")
+            
             # Click sign-in button
             sign_in_button = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a')
             sign_in_button.click()
 
-            # Wait for new window to appear or error message
+            # Wait for either new window to appear OR page to load in same tab
+            logger.info("Waiting for login to complete...")
             try:
-                WebDriverWait(self.driver, 10).until(lambda d: len(d.window_handles) > 1)
+                # First, wait a bit for the page to process
+                WebDriverWait(self.driver, 5).until(
+                    lambda d: d.execute_script("return document.readyState") == "complete"
+                )
+                
+                # Check if a new window opened (old Skyward behavior)
+                if len(self.driver.window_handles) > 1:
+                    logger.info("New window detected - switching to it")
+                    self.driver.switch_to.window(self.driver.window_handles[1])
+                else:
+                    logger.info("No new window - staying in same tab")
+                    # Wait for the main page to load in the same tab
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.TAG_NAME, "body"))
+                    )
+                    
             except:
                 # Check for error message
                 try:
@@ -211,13 +237,17 @@ class SkywardGPA:
 
     def navigate_to_gradebook(self):
         try:
-            logger.info("Attempting to switch to new window...")
-            self.send_progress_update("Switching to main window...", 25)
-            WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
-            self.driver.switch_to.window(self.driver.window_handles[1])
-            logger.info("Successfully switched to new window")
+            # Check if we need to switch windows or if we're already in the main window
+            if len(self.driver.window_handles) > 1:
+                logger.info("Switching to main window...")
+                self.send_progress_update("Switching to main window...", 25)
+                WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
+                self.driver.switch_to.window(self.driver.window_handles[1])
+                logger.info("Successfully switched to new window")
+            else:
+                logger.info("Already in main window - no switching needed")
 
-            # Wait for the main page to load instead of static sleep
+            # Wait for the main page to load
             logger.info("Waiting for main page to load...")
             self.send_progress_update("Loading main page...", 30)
             WebDriverWait(self.driver, 15).until(

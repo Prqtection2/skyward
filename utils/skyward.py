@@ -57,14 +57,14 @@ class SkywardGPA:
             
             try:
                 # Set up Chrome options
-            options = webdriver.ChromeOptions()
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--disable-extensions')
-            options.add_argument('--disable-infobars')
-            options.add_argument('--disable-notifications')
-            options.add_argument('--disable-popup-blocking')
+                options = webdriver.ChromeOptions()
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-gpu')
+                options.add_argument('--disable-extensions')
+                options.add_argument('--disable-infobars')
+                options.add_argument('--disable-notifications')
+                options.add_argument('--disable-popup-blocking')
                 options.add_argument('--ignore-certificate-errors')
                 options.add_argument('--window-size=1920,1080')
                 
@@ -82,7 +82,7 @@ class SkywardGPA:
                 # Set Chrome binary location
                 options.binary_location = '/usr/bin/google-chrome'
                 
-            self.driver = webdriver.Chrome(service=service, options=options)
+                self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
                 logger.error(f"Failed to initialize Chrome driver: {str(e)}")
                 logger.error(f"Chrome driver traceback: {traceback.format_exc()}")

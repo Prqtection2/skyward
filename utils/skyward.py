@@ -57,14 +57,14 @@ class SkywardGPA:
             
             try:
                 # Set up Chrome options
-                options = webdriver.ChromeOptions()
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
-                options.add_argument('--disable-gpu')
-                options.add_argument('--disable-extensions')
-                options.add_argument('--disable-infobars')
-                options.add_argument('--disable-notifications')
-                options.add_argument('--disable-popup-blocking')
+            options = webdriver.ChromeOptions()
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-infobars')
+            options.add_argument('--disable-notifications')
+            options.add_argument('--disable-popup-blocking')
                 options.add_argument('--ignore-certificate-errors')
                 options.add_argument('--window-size=1920,1080')
                 
@@ -82,7 +82,7 @@ class SkywardGPA:
                 # Set Chrome binary location
                 options.binary_location = '/usr/bin/google-chrome'
                 
-                self.driver = webdriver.Chrome(service=service, options=options)
+            self.driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
                 logger.error(f"Failed to initialize Chrome driver: {str(e)}")
                 logger.error(f"Chrome driver traceback: {traceback.format_exc()}")
@@ -178,12 +178,24 @@ class SkywardGPA:
             username_input = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[1]/td[2]/input'))
             )
+            
+            # Click, clear, and enter username
+            username_input.click()
+            username_input.clear()
             username_input.send_keys(self.username)
-            logger.info("Username entered successfully")
+            logger.info(f"Username entered successfully: '{self.username}'")
 
             # Enter password
             password_input = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[2]/td[2]/input')
+            
+            # Click, clear, and enter password
+            password_input.click()
+            password_input.clear()
             password_input.send_keys(self.password)
+            logger.info("Password entered successfully")
+            
+            # Take screenshot after filling credentials
+            self.take_debug_screenshot("04_credentials_filled")
 
             # Wait for loading overlay to disappear before clicking sign-in button
             logger.info("Waiting for loading overlay to disappear...")
@@ -194,7 +206,7 @@ class SkywardGPA:
                 logger.info("Loading overlay disappeared")
             except:
                 logger.info("Loading overlay not found or already gone")
-            
+
             # Click sign-in button
             sign_in_button = self.driver.find_element(By.XPATH, '/html/body/form[1]/div/div/div[4]/div[2]/div[1]/div[2]/div/table/tbody/tr[7]/td/a')
             sign_in_button.click()
@@ -241,9 +253,9 @@ class SkywardGPA:
             if len(self.driver.window_handles) > 1:
                 logger.info("Switching to main window...")
                 self.send_progress_update("Switching to main window...", 25)
-                WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
-                self.driver.switch_to.window(self.driver.window_handles[1])
-                logger.info("Successfully switched to new window")
+            WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
+            self.driver.switch_to.window(self.driver.window_handles[1])
+            logger.info("Successfully switched to new window")
             else:
                 logger.info("Already in main window - no switching needed")
 
@@ -281,8 +293,8 @@ class SkywardGPA:
                 gradebook_xpath = '/html/body/div[1]/div[2]/div[2]/div[1]/div/ul[2]/li[2]/a'
                 try:
                     gradebook_button = WebDriverWait(self.driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
-                    )
+                    EC.element_to_be_clickable((By.XPATH, gradebook_xpath))
+                )
                     logger.info("Found gradebook button using updated XPath")
                 except:
                     # Fallback: look for any link with "Gradebook" text

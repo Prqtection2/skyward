@@ -253,9 +253,9 @@ class SkywardGPA:
             if len(self.driver.window_handles) > 1:
                 logger.info("Switching to main window...")
                 self.send_progress_update("Switching to main window...", 25)
-            WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
-            self.driver.switch_to.window(self.driver.window_handles[1])
-            logger.info("Successfully switched to new window")
+                WebDriverWait(self.driver, 20).until(lambda d: len(d.window_handles) > 1)
+                self.driver.switch_to.window(self.driver.window_handles[1])
+                logger.info("Successfully switched to new window")
             else:
                 logger.info("Already in main window - no switching needed")
 

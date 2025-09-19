@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_file
 from utils.skyward import SkywardGPA
 import os
 import json
+import glob
 
 app = Flask(__name__)
 app.config['ENV'] = os.environ.get('FLASK_ENV', 'production')
@@ -52,6 +53,34 @@ def get_progress(session_id):
         updates = progress_updates[session_id]
         return jsonify(updates)
     return jsonify([])
+
+@app.route('/debug/screenshots')
+def list_screenshots():
+    """List available debug screenshots"""
+    try:
+        screenshot_files = glob.glob('/tmp/debug_*.png')
+        screenshots = []
+        for file_path in screenshot_files:
+            filename = os.path.basename(file_path)
+            screenshots.append({
+                'filename': filename,
+                'url': f'/debug/screenshot/{filename}'
+            })
+        return jsonify(screenshots)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/debug/screenshot/<filename>')
+def get_screenshot(filename):
+    """Serve a debug screenshot"""
+    try:
+        file_path = f'/tmp/{filename}'
+        if os.path.exists(file_path):
+            return send_file(file_path, mimetype='image/png')
+        else:
+            return jsonify({'error': 'Screenshot not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
